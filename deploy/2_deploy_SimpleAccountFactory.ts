@@ -8,17 +8,20 @@ const deploySimpleAccountFactory: DeployFunction = async function (hre: HardhatR
   const network = await provider.getNetwork()
   // only deploy on local test network.
   if (network.chainId !== 31337 && network.chainId !== 1337) {
-    return
+    // console.log(`skip for non-local network`)
+    // return
   }
 
-  const entrypoint = await hre.deployments.get('EntryPoint')
+  // const entrypoint = await hre.deployments.get('EntryPoint')
   const ret = await hre.deployments.deploy(
     'SimpleAccountFactory', {
       from,
-      args: [entrypoint.address],
-      gasLimit: 6e6,
+      // args: [entrypoint.address],
+      args: ['0x7ad823a5ca21768a3d3041118bc6e981b0e4d5ee'],
+      // gasLimit: 6e6,
       log: true,
-      deterministicDeployment: true
+      // deterministicDeployment: true,
+      skipIfAlreadyDeployed: false
     })
   console.log('==SimpleAccountFactory addr=', ret.address)
 }

@@ -3,13 +3,15 @@ import { expect } from 'chai'
 import { ERC1967Proxy__factory, VoteRecoverAccount, VoteRecoverAccount__factory } from '../typechain'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { AddressZero } from './testutils'
+import { formatEther, parseEther } from 'ethers/lib/utils'
 
 async function deployVoteRecoverAccount (accounts: SignerWithAddress[]): Promise<VoteRecoverAccount> {
   const impl = await new VoteRecoverAccount__factory(accounts[0]).deploy(ethers.constants.AddressZero)
-  // console.log('impl is ', impl.address, ' chain ', await accounts[0].provider?.getNetwork())
+  console.log('impl is ', impl.address, ' chain ', await accounts[0].provider?.getNetwork())
+  await impl.deployed()
   const { data } = await impl.populateTransaction.initialize(accounts[0].address)
   const proxy = await new ERC1967Proxy__factory(accounts[0]).deploy(impl.address, data!)
-  return VoteRecoverAccount__factory.connect(proxy.address, accounts[0])
+  return proxy.deployed().then(() => VoteRecoverAccount__factory.connect(proxy.address, accounts[0]))
 }
 
 describe('VoteRecoverAccount', function () {
@@ -17,6 +19,19 @@ describe('VoteRecoverAccount', function () {
   let voteRecoverAcc: VoteRecoverAccount
   before(async function () {
     accounts = await ethers.getSigners()
+    console.log(`accounts ${accounts.length}`)
+    console.log(`account ${accounts[0].address} balance ${await accounts[0].getBalance().then(formatEther)}`)
+
+    const { chainId } = await ethers.provider.getNetwork()
+    if (chainId === 71) {
+      // console.log('distribute gas')
+      // check account balance
+      // let nonce = await accounts[0].getTransactionCount()
+      // await Promise.all([1, 2, 3].map(async idx => accounts[0].sendTransaction({
+      //   to: accounts[idx].address, value: parseEther('1.3'), nonce: nonce++
+      // }).then(async tx => tx.wait())))
+    }
+
     voteRecoverAcc = await deployVoteRecoverAccount(accounts)
   })
 
@@ -47,22 +62,22 @@ describe('VoteRecoverAccount', function () {
   describe('vote', function () {
     it('insufficient votes', async () => {
       const acc = await deployVoteRecoverAccount(accounts)
-      await Promise.all(accounts.slice(0, 2).map(s =>
-        acc.changeParticipants([s.address], [true]).then(tx => tx.wait())
+      await Promise.all(accounts.slice(0, 2).map(async s =>
+        acc.changeParticipants([s.address], [true]).then(async tx => tx.wait())
           .then(async () => {
             return acc.connect(s).vote(s.address)
-          }).then(tx => tx.wait())))
+          }).then(async tx => tx.wait())))
       await expect(acc.recover(accounts[0].address)).be.revertedWith('insufficient votes')
     })
 
     it('recover', async () => {
       const acc = await deployVoteRecoverAccount(accounts)
       const newOwner = accounts[1].address
-      await Promise.all(accounts.slice(0, 3).map(s =>
-        acc.changeParticipants([s.address], [true]).then(tx => tx.wait())
+      await Promise.all(accounts.slice(0, 3).map(async s =>
+        acc.changeParticipants([s.address], [true]).then(async tx => tx.wait())
           .then(async () => {
             return acc.connect(s).vote(newOwner)
-          }).then(tx => tx.wait())))
+          }).then(async tx => tx.wait())))
       await expect(await acc.recover(newOwner)).to.emit(acc, 'OwnerChanged')
         .withArgs(accounts[0].address, newOwner)
       expect(accounts[0].address).not.eq(newOwner, 'should change owner')
