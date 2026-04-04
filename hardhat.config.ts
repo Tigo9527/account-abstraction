@@ -44,16 +44,20 @@ const config: HardhatUserConfig = {
       }
     }],
     overrides: {
-      'contracts/core/EntryPoint.sol': optimizedComilerSettings,
-      'contracts/samples/SimpleAccount.sol': optimizedComilerSettings
+      // 'contracts/core/EntryPoint.sol': optimizedComilerSettings,
+      // 'contracts/samples/SimpleAccount.sol': optimizedComilerSettings
     }
   },
   networks: {
-    dev: { url: 'http://localhost:8545' },
+    dev: { url: 'http://127.0.0.1:8545' },
     // github action starts localgeth service, for gas calculations
     localgeth: { url: 'http://localgeth:8545' },
     goerli: getNetwork('goerli'),
     sepolia: getNetwork('sepolia'),
+    evm71: {
+      url: 'https://evmtestnet.confluxrpc.com',
+      accounts: {mnemonic},
+    },
     proxy: getNetwork1('http://localhost:8545')
   },
   mocha: {
@@ -61,7 +65,17 @@ const config: HardhatUserConfig = {
   },
 
   etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY
+    apiKey: process.env.ETHERSCAN_API_KEY || "x",
+    customChains: [
+      {
+        network: "evm71",
+        chainId: 71,
+        urls: {
+          apiURL: "https://evmapi-testnet.confluxscan.net/api",
+          // browserURL: "https://goerli.etherscan.io"
+        }
+      }
+    ]
   }
 
 }
